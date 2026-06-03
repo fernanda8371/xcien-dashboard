@@ -35,12 +35,13 @@ function Sparkline({ data, meta, ok }) {
 }
 
 export default function Clientes() {
-  const { clients, loading, usingMock, addClient } = useClients()
+  const { clients, loading, usingMock, addClient, updateClient } = useClients()
   const { series, latest } = useClientMetrics(clients)
   const [search, setSearch]       = useState('')
   const [filterTipo, setFilterTipo] = useState('')
   const [filterNode, setFilterNode] = useState('')
   const [showModal, setShowModal]  = useState(false)
+  const [editingId, setEditingId]  = useState(null)
   const [saving, setSaving]        = useState(false)
   const [form, setForm] = useState({
     nombre: '', tipo: 'PyMe', node_id: 'RB5',
@@ -63,18 +64,61 @@ export default function Clientes() {
     return r
   }, [clients])
 
+  // Hilos del nodo seleccionado en el form: cuáles están ocupados y cuáles libres.
+  // Al editar, el hilo actual del propio cliente no cuenta como ocupado.
+  const hilosNodo = useMemo(() => {
+    const usados = clients
+      .filter(c => c.node_id === form.node_id && c.hilo && c.id !== editingId)
+      .map(c => Number(c.hilo))
+    const libres = Array.from({ length: 24 }, (_, i) => i + 1).filter(h => !usados.includes(h))
+    return { usados, libres }
+  }, [clients, form.node_id, editingId])
+  const hiloOcupado = hilosNodo.usados.includes(Number(form.hilo))
+
+  const emptyForm = {
+    nombre: '', tipo: 'PyMe', node_id: 'RB5', velocidad_mbps: 100, hilo: 1, puerto: 1, caja: '',
+    puerto_adm: '', meta_bw_mbps: 100, meta_latencia_ms: 50, meta_uptime_pct: 99.5,
+  }
+
+  const openNew = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setShowModal(true)
+  }
+
+  const openEdit = (c) => {
+    setEditingId(c.id)
+    setForm({
+      nombre: c.nombre ?? '', tipo: c.tipo ?? 'PyMe', node_id: c.node_id ?? 'RB5',
+      velocidad_mbps: c.velocidad_mbps ?? 100, hilo: c.hilo ?? 1, puerto: c.puerto ?? 1,
+      caja: c.caja ?? '', puerto_adm: c.puerto_adm ?? '',
+      meta_bw_mbps: c.meta_bw_mbps ?? c.velocidad_mbps ?? 100,
+      meta_latencia_ms: c.meta_latencia_ms ?? 50, meta_uptime_pct: c.meta_uptime_pct ?? 99.5,
+    })
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setEditingId(null)
+    setForm(emptyForm)
+  }
+
   const handleSave = async () => {
     if (!form.nombre.trim()) return
     setSaving(true)
-    const nextVlan = 1000 + clients.length + 1
     // Si no capturan meta de BW, se garantiza la velocidad contratada
     const meta_bw_mbps = form.meta_bw_mbps || form.velocidad_mbps
-    const { error } = await addClient({ ...form, meta_bw_mbps, vlan: nextVlan, activo: true })
-    if (error) alert('Error al guardar: ' + error)
+    let error
+    if (editingId) {
+      ({ error } = await updateClient(editingId, { ...form, meta_bw_mbps }))
+    } else {
+      const nextVlan = 1000 + clients.length + 1
+      ;({ error } = await addClient({ ...form, meta_bw_mbps, vlan: nextVlan, activo: true }))
+    }
+    if (error) alert('Error al guardar: ' + (error.message || JSON.stringify(error)))
     setSaving(false)
-    setShowModal(false)
-    setForm({ nombre: '', tipo: 'PyMe', node_id: 'RB5', velocidad_mbps: 100, hilo: 1, puerto: 1, caja: '',
-      puerto_adm: '', meta_bw_mbps: 100, meta_latencia_ms: 50, meta_uptime_pct: 99.5 })
+    if (!error) closeModal()
   }
 
   const velLabel = (mbps) => mbps >= 1000 ? `${mbps/1000} Gbps` : `${mbps} Mbps`
@@ -104,7 +148,7 @@ export default function Clientes() {
           {NODE_OPTIONS.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
         </select>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openNew}
           style={{
             padding: '7px 16px', fontSize: 13, fontWeight: 500,
             background: '#1D9E75', color: '#fff', border: 'none',
@@ -124,17 +168,17 @@ export default function Clientes() {
             <thead>
               <tr style={{ background: '#f9fafb' }}>
                 {[
-                  ['Cliente', '19%'], ['Tipo', '9%'], ['Nodo', '6%'],
-                  ['Puerto adm', '13%'], ['VLAN', '6%'], ['Velocidad', '9%'],
-                  ['Meta BW', '8%'], ['Monitoreo (BW actual)', '15%'], ['SLA', '9%'],
-                ].map(([h, w]) => (
-                  <th key={h} style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500, color: '#6b7280', borderBottom: '0.5px solid #e5e7eb', width: w }}>{h}</th>
+                  ['Cliente', '17%'], ['Tipo', '8%'], ['Nodo', '6%'],
+                  ['Puerto adm', '12%'], ['VLAN', '6%'], ['Velocidad', '9%'],
+                  ['Meta BW', '8%'], ['Monitoreo (BW actual)', '14%'], ['SLA', '8%'], ['', '6%'],
+                ].map(([h, w], i) => (
+                  <th key={h || i} style={{ textAlign: 'left', padding: '8px 10px', fontSize: 11, fontWeight: 500, color: '#6b7280', borderBottom: '0.5px solid #e5e7eb', width: w }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>Sin resultados</td></tr>
+                <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>Sin resultados</td></tr>
               ) : (
                 filtered.map((c, i) => {
                   const last = latest[c.id]
@@ -160,6 +204,14 @@ export default function Clientes() {
                       ) : <span style={{ color: '#9ca3af', fontSize: 11 }}>—</span>}
                     </td>
                     <td style={{ padding: '8px 10px' }}><Badge variant={sla.variant}>{sla.label}</Badge></td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <button
+                        onClick={() => openEdit(c)}
+                        style={{ padding: '4px 10px', fontSize: 11, fontWeight: 500, background: 'transparent', border: '0.5px solid #d1d5db', borderRadius: 6, cursor: 'pointer', color: '#1D9E75' }}
+                      >
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                   )
                 })
@@ -179,7 +231,7 @@ export default function Clientes() {
             background: '#fff', borderRadius: 12, border: '0.5px solid #e5e7eb',
             padding: 24, width: 380, maxWidth: '95%',
           }}>
-            <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>Alta de nuevo cliente</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>{editingId ? 'Editar cliente' : 'Alta de nuevo cliente'}</h3>
 
             {[
               { label: 'Nombre / Razón social', key: 'nombre', type: 'text', placeholder: 'Empresa S.A. de C.V.' },
@@ -216,6 +268,21 @@ export default function Clientes() {
                 <input style={inputStyle} type="number" min="1" max="48"
                   value={form.puerto} onChange={e => setForm(p => ({ ...p, puerto: +e.target.value }))} />
               </div>
+            </div>
+
+            {/* Disponibilidad de hilos en el nodo elegido */}
+            <div style={{ marginTop: -2, marginBottom: 10, fontSize: 11 }}>
+              {hiloOcupado ? (
+                <span style={{ color: '#854F0B' }}>
+                  ⚠ El hilo {form.hilo} ya está ocupado en {form.node_id}. Libres:{' '}
+                  {hilosNodo.libres.length ? hilosNodo.libres.join(', ') : 'ninguno'}
+                </span>
+              ) : (
+                <span style={{ color: '#6b7280' }}>
+                  Hilos libres en {form.node_id} ({hilosNodo.libres.length}/24):{' '}
+                  {hilosNodo.libres.length ? hilosNodo.libres.slice(0, 12).join(', ') + (hilosNodo.libres.length > 12 ? '…' : '') : 'ninguno'}
+                </span>
+              )}
             </div>
 
             <div style={{ marginBottom: 10 }}>
@@ -261,13 +328,13 @@ export default function Clientes() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)}
+              <button onClick={closeModal}
                 style={{ padding: '7px 16px', fontSize: 13, background: 'transparent', border: '0.5px solid #d1d5db', borderRadius: 6, cursor: 'pointer', color: '#6b7280' }}>
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={saving}
                 style={{ padding: '7px 16px', fontSize: 13, background: '#1D9E75', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Guardando...' : 'Registrar cliente'}
+                {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Registrar cliente'}
               </button>
             </div>
 

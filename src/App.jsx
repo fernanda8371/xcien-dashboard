@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Topologia from './views/Topologia'
 import Anillos   from './views/Anillos'
 import Nodos     from './views/Nodos'
+import Hilos     from './views/Hilos'
 import Clientes  from './views/Clientes'
 import { MockBanner } from './components/UI'
 import { useClients } from './lib/hooks'
@@ -10,6 +11,7 @@ const VIEWS = [
   { id: 'topo',    label: 'Topología' },
   { id: 'anillos', label: 'Anillos'   },
   { id: 'nodos',   label: 'Nodos'     },
+  { id: 'hilos',   label: 'Hilos'     },
   { id: 'clientes',label: 'Clientes'  },
 ]
 
@@ -74,6 +76,7 @@ export default function App() {
         {view === 'topo'     && <Topologia totalClients={clients.length} />}
         {view === 'anillos'  && <Anillos />}
         {view === 'nodos'    && <Nodos />}
+        {view === 'hilos'    && <Hilos />}
         {view === 'clientes' && <Clientes />}
       </main>
 

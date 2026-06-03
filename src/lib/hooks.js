@@ -83,7 +83,18 @@ export function useClients() {
     return { data, error }
   }
 
-  return { clients, loading, error, usingMock, refetch: fetchClients, addClient }
+  const updateClient = async (id, changes) => {
+    if (!isSupabaseConfigured()) {
+      // Modo mock — actualiza solo localmente
+      setClients(prev => prev.map(c => (c.id === id ? { ...c, ...changes } : c)))
+      return { data: { id, ...changes }, error: null }
+    }
+    const { data, error } = await supabase.from('clients').update(changes).eq('id', id).select().single()
+    if (!error) fetchClients()
+    return { data, error }
+  }
+
+  return { clients, loading, error, usingMock, refetch: fetchClients, addClient, updateClient }
 }
 
 // ── Monitoreo por cliente (alternativa ligera a Prometheus) ──
