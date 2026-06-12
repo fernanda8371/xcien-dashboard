@@ -120,7 +120,7 @@ export const RINGS = [
     estandar: 'G.8032 ERPS',
     capacidad_mbps: 10000,
     nodos: ['I1', 'RB5', 'RB8', 'RB9'],
-    rpl_nodo: 'RB8',
+    rpl_nodo: 'RB9',
     core_nodo: 'I1',
     uplinks: ['IP Transit 1 – Arelion 100G'],
   },

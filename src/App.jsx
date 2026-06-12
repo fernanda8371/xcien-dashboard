@@ -53,7 +53,7 @@ export default function App() {
         <div style={{ display: 'flex', gap: 20, fontSize: 12, color: '#6b7280' }}>
           <span>Nodos <strong style={{ color: '#111' }}>9/9</strong></span>
           <span>Clientes <strong style={{ color: '#111' }}>{clients.length}</strong></span>
-          <span>Uso red <strong style={{ color: '#111' }}>52%</strong></span>
+          <span>Uso red <strong style={{ color: '#111' }}>58%</strong></span>
           <span>Anillos <strong style={{ color: '#111' }}>2/2</strong></span>
           <span style={{ color: '#9ca3af' }}>● SNMP · 30s</span>
         </div>
@@ -82,7 +82,7 @@ export default function App() {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', padding: '16px 24px', fontSize: 11, color: '#9ca3af', borderTop: '0.5px solid #e5e7eb', marginTop: 20 }}>
-        XCIEN · Zona Conurbada Saltillo · ITU-T G.8032 ERPS · MPLS-IP · OSPF · CWDM 1270–1610nm · Raisecom RAX750
+        XCIEN · Zona Conurbada Saltillo · ITU-T G.8032 ERPS · Carrier Ethernet puro · CWDM 1270–1610nm · Raisecom RAX750
       </div>
     </div>
   )
